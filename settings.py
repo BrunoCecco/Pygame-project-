@@ -1,7 +1,9 @@
 # project game settings/options
-size = (1000, 500)
+size = (900, 400)
 FONT = 'arial'
 HS_file = "highscore.txt"
+
+Coins_file = "coins.txt"
 game_speed = 4
 
 # define colours

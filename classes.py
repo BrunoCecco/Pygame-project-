@@ -4,52 +4,21 @@ import random
 import math
 from settings import *
 
-'''
-text1 = font.render("START", True, WHITE)
-text2 = font.render("OPTIONS", True, WHITE)
-text3 = font.render("ABOUT", True, WHITE)
-rect1 = pygame.Rect(size[0]/2.5,size[1]/2.5,115,40)
-rect2 = pygame.Rect(300,400,115,40)
-rect3 = pygame.Rect(300,500,115,40)
-# The buttons consist of a text surface, a rect and a color.
-buttons = [
-    [text1, rect1, BLACK],
-    #[text2, rect2, BLACK],
-    #[text3, rect3, BLACK],
-    ]
-'''
-       
-    
-def game_intro():
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                return False
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_RETURN:
-                    return False
-            elif event.type == pygame.MOUSEMOTION:
-                for button in buttons:  # button[1] is the rect. Use its collidepoint method to detect collision
-                    if button[1].collidepoint(event.pos): # Set the button's color to the hover color.
-                        button[2] = HOVER_COLOR
-                    else:
-                        # Otherwise reset the color to black.
-                        button[2] = BLACK
-            elif event.type == pygame.MOUSEBUTTONDOWN: #if start button clicked, exit game_intro and start game
-                for button in buttons:
-                    if button[1].collidepoint(event.pos):
-                        return False # game intro is false so game loop begins
-
-        screen.fill(WHITE)
-
-        # Draw the buttons with their current colors at their rects.
-        for text, rect, color in buttons:
-            pygame.draw.rect(screen, color, rect)
-            screen.blit(text, rect)
-
-        pygame.display.flip()
-        clock.tick(15)
-
+class Shop(pygame.sprite.Sprite):
+    # Define the constructor
+    def __init__(self):
+        # Call the sprite constructor
+        super().__init__()
+        # Set the position of the sprite
+        self.image = pygame.Surface([size[0], size[1]])
+        self.image.fill(BLUE) # fill sprite with the color
+        self.rect = self.image.get_rect()
+        self.rect.x = 0 
+        self.rect.y = 0
+        self.width = size[0]
+        self.height = size[1]
+        
+        
 class Enemy(pygame.sprite.Sprite):
     # Define the constructor
     def __init__(self, width, height, player):
@@ -57,14 +26,13 @@ class Enemy(pygame.sprite.Sprite):
         super().__init__()
         # Set the position of the sprite
         self.image = pygame.Surface([width, height])
-        self.image.fill(RED)
+        self.image.fill(RED) # fill sprite with the color
         self.rect = self.image.get_rect()
-        self.rect.x = -random.randrange(0, 1000)
-        self.rect.y = size[1]/2.3
-        self.rect.topleft = self.rect.x, self.rect.y
+        self.rect.x = -random.randrange(0, 1000) # set initial x coordinate
+        self.rect.y = size[1]/2.3 # set initial y coordinate
         self.width = width
         self.height = height
-        self.speed = 1
+        self.speed = 1 # set enemy speed
     
             
 class Player(pygame.sprite.Sprite):
@@ -78,11 +46,9 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.x = size[0]/2
         self.rect.y = size[1] - 40
-        self.rect.topleft = self.rect.x, self.rect.y
         self.width = 40
         self.height = 40
         self.speed = 0
-        #self.bullet = bullet
  
     def update(self):
         self.rect.y += self.speed #player move up or down            
@@ -96,7 +62,7 @@ class Player(pygame.sprite.Sprite):
 
 class bullets(pygame.sprite.Sprite):
     # Define the constructor 
-    def __init__(self, color, plx, ply):
+    def __init__(self, color, plx, ply): # bullet uses player's x and y coordinates 
         # Call the sprite constructor
         super().__init__()
         # Create a sprite and fill it with colour
@@ -111,7 +77,7 @@ class bullets(pygame.sprite.Sprite):
         self.speed = game_speed * 2
 
     def update(self):
-        self.rect.x = self.rect.x - self.speed #bullets move right
+        self.rect.x = self.rect.x - self.speed #bullets move left
 
 
 class Lives(pygame.sprite.Sprite):
@@ -131,7 +97,7 @@ class Lives(pygame.sprite.Sprite):
         self.speed = game_speed
         
     def update(self): # create illusion that player is moving right
-        self.rect.x = self.rect.x - self.speed #obstacles move to the left
+        self.rect.x = self.rect.x - self.speed #move to the left
 
 
 class Coins(pygame.sprite.Sprite):
@@ -151,49 +117,42 @@ class Coins(pygame.sprite.Sprite):
         self.speed = game_speed
         
     def update(self): # create illusion that player is moving right
-        self.rect.x = self.rect.x - self.speed #obstacles move to the left
+        self.rect.x = self.rect.x - self.speed #move to the left
+
 
 ## -- Define the class invaders which is a sprite
 class Obstacle(pygame.sprite.Sprite):
     # Define the constructor
-    def __init__(self, color, width, height):
+    def __init__(self, width, height):
         # Call the sprite constructor
         super().__init__()
         # Create a sprite and fill it with colour
-        self.image = pygame.Surface([width,height])
-        self.image.fill(color)
-        self.rect = self.image.get_rect()
-        self.rect.x = random.randrange(1000, 2000)
-        self.rect.y = random.randrange(0, size[1] - height)
-        # Set the position of the sprite
         self.width = width
         self.height = height
-        self.speed = game_speed
+        self.color = RED
+        self.image = pygame.Surface([width,height])
+        self.image.fill(self.color)
+        self.rect = self.image.get_rect()
+        self.rect.x = -100 # spawn in a random position
+        self.rect.y = -100
+        # Set the position of the sprite
+
+
+class Pillars(Obstacle):
+    pass
 
     def update(self): # create illusion that player is moving right
-        self.rect.x = self.rect.x - self.speed #obstacles move to the left
+        self.rect.x = self.rect.x - game_speed #obstacles move to the left
         if self.rect.x <= 0:
-            self.rect.x = random.randrange(1000, 2000)
-            self.rect.y = random.randrange(0, size[1]-self.height)
+            self.rect.x = random.randrange(1000, 2000) # respawn if they go off the screen
+            self.rect.y = random.randrange(0, size[1]-self.height) #respawn in a random position
 
+class Rockets(Obstacle):
+    pass
 
-class Rocket(pygame.sprite.Sprite): 
-    def __init__(self, color, width, height):
-        # Call the sprite constructor
-        super().__init__()
-        self.image = pygame.Surface([width,height])
-        self.image.fill(color)
-        self.rect = self.image.get_rect()
-        # Set the position of the sprite
-        self.width = width
-        self.height = height
-        self.speed = game_speed * 2
-        self.rect.x = random.randrange(2000, 2500)
-        self.rect.y = random.randrange(0, size[1]-self.height)
-
-    def update(self):
-        self.rect.x = self.rect.x - self.speed #obstacles move to the left
+    def update(self): # create illusion that player is moving right
+        self.rect.x = self.rect.x - game_speed*2 #obstacles move to the left
         if self.rect.x <= 0:
-            self.rect.x = random.randrange(2000, 2500)
-            self.rect.y = random.randrange(0, size[1]-self.height)
+            self.rect.x = 3000 # respawn if they go off the screen
+            self.rect.y = random.randrange(0, size[1]-self.height) #respawn in a random position
 
