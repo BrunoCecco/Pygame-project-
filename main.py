@@ -1,7 +1,7 @@
 # project game main loop
 
 import pygame as pg
-import random, math, pickle
+import random, math
 from settings import *
 from classes import *
 from os import path
@@ -13,43 +13,53 @@ class Game(pg.sprite.Sprite):
         # Call the sprite constructor
         pg.sprite.Sprite.__init__(self)
         pg.init() # initialise pygame
-        pg.mixer.init() # initialise mixer module for sound
-        self.screen = pg.display.set_mode(size) # create screen 
-        pg.display.set_caption("Project game")
-        self.font = pg.font.match_font(FONT) 
+        self.font = FONT 
         self.clock = pg.time.Clock()
         self.running = True
-        self.textfiles()
+        self.readfiles()
+        self.sprite_groups() # create sprite groups
+        #create text boxes
+        self.input_box = InputBox(size[0]/2 - 100, 50, 140, 32)
         
-    def textfiles(self):
+    def play_music(self):
+        song_q = ['spongebob.mp3', 'dontworry.mp3', 'babyshark.mp3', 'jinglebells.mp3', 'chainsmokers.mp3']
+        pygame.mixer.music.load(random.choice(song_q)) # load random song
+        pg.mixer.music.play() # play random song
+
+
+    def readfiles(self):
         with open(HS_file, 'r') as file: # open hs file if it exists
             try: # runs if possible
                 self.highscore = int(file.read())
             except: # if try fails, this runs instead
                 self.highscore = 0
-
-        with open(Coins_file, 'r') as file: # open coins file
-            try:
+        with open(Coins_file, 'r') as file: # open hs file if it exists
+            try: # runs if possible
                 self.coin_total = int(file.read())
-            except:
+            except: # if try fails, this runs instead
                 self.coin_total = 0
+        with open(HS_name, 'r') as file: # open hs file if it exists
+            try: # runs if possible
+                self.hs_name = file.read()
+            except: # if try fails, this runs instead
+                self.hs_name = 'error'
 
                 
+    def writefiles(self, file_name, var):
+        with open(file_name, 'w') as file: # open text file
+            file.write(str(var)) # save new coin total in text file
+        
+                
     def new_game(self):
+    
         # start a new game
         self.score = 0
         self.lives = 5 #player starts with 5 lives
         
         #create sprite groups
-        self.all_sprites_group = pg.sprite.Group()        
-        self.pillar_group = pg.sprite.Group()
-        self.bullet_group = pg.sprite.Group()
-        self.enemy_group = pg.sprite.Group()
-        self.bonus_group = pg.sprite.Group()
-        self.rocket_group = pg.sprite.Group()
-
-        #create player
-        self.player = Player()
+        self.sprite_groups()
+        
+        #create player        
         self.all_sprites_group.add(self.player)
         #create enemy
         self.enemy = Enemy(40, 40, self.player)
@@ -59,7 +69,7 @@ class Game(pg.sprite.Sprite):
         self.extra_life = Lives(GREEN, 30, 30)
         self.bonus_group.add(self.extra_life)
         self.all_sprites_group.add(self.extra_life)
-        
+
         self.coins = Coins(YELLOW, 20, 20)
         self.bonus_group.add(self.coins)
         self.all_sprites_group.add(self.coins)
@@ -91,8 +101,9 @@ class Game(pg.sprite.Sprite):
     def update(self):
         # game loop update function
         self.all_sprites_group.update() # update all sprites groups
-        
-        pl = self.player
+
+        #abbreviations
+        pl = self.player 
         en = self.enemy
         co = self.coins
         el = self.extra_life
@@ -115,8 +126,9 @@ class Game(pg.sprite.Sprite):
             co.rect.y = random.randrange(0, size[1] - co.height)
         if coin_collision == True: # if there's a collision add coins to player.coins
             self.coin_total += 1
-            with open(Coins_file, 'w') as file: # open text file
-                file.write(str(self.coin_total)) # save new coin total in text fil
+            self.writefiles(Coins_file, self.coin_total)
+        #TBD - method to write in files
+
                 
         # extra lives collisions
         life_collision = pygame.sprite.collide_rect(pl, el) # if there's a collision, spawn new bonus
@@ -128,27 +140,31 @@ class Game(pg.sprite.Sprite):
 
         
         # TBD - shortest path for enemy movement to track player
-        if pl.rect.x >= en.rect.x:
+        if pl.rect.x > en.rect.x:
             en.rect.x += en.speed
-        if pl.rect.y <= en.rect.y:
+        if pl.rect.y < en.rect.y:
             en.rect.y -= en.speed
-        elif pl.rect.y >= en.rect.y:
+        elif pl.rect.y > en.rect.y:
             en.rect.y += en.speed
             
        # check for collision with bullets and enemy
         for b in self.bullet_group:
             bullet_collision = pygame.sprite.spritecollide(self.bullet, self.enemy_group, True)
-            for e in bullet_collision: #create new enemy if it dies
+            if bullet_collision: #create new enemy if it dies
+                b.kill()
                 en = Enemy(40, 40, pl)
-                self.all_sprites_group.add(en)
                 self.enemy_group.add(en)
+                self.all_sprites_group.add(en)
+                
 
         # check for collision with enemy and player
-        enemy_collision = pygame.sprite.spritecollide(self.player, self.enemy_group, False)
+        enemy_collision = pygame.sprite.spritecollide(self.player, self.enemy_group, True)
         if enemy_collision: # deduct 3 lives if enemy catches player
             self.lives -= 3
-            pg.time.delay(50)  
-            enemy.kill() # remove the enemy 
+            pg.time.delay(50)
+            en = Enemy(40, 40, pl)
+            self.enemy_group.add(en)
+            self.all_sprites_group.add(en)
 
         if self.lives > 0:  # increase player score unless it has run out of lives
             self.score += 1
@@ -158,100 +174,138 @@ class Game(pg.sprite.Sprite):
         
     def events(self):
         # keyboard events
-        pos = pg.mouse.get_pos() # get position of mouse
         for event in pg.event.get():
             if event.type == pg.QUIT: # if user presses exit button, game ends
-                if self.playing:
-                    self.playing = False
+                self.playing = False
                 self.running = False
             if event.type == pg.KEYDOWN:
-                key = event.key
-                if key == pg.K_UP: # player moves up
+                k = event.key 
+                if k == pg.K_UP: # player moves up
                     self.player.speed = -10 
-                if key == pg.K_DOWN: # player moves down
+                if k == pg.K_DOWN: # player moves down
                     self.player.speed = 10
-                if key == pygame.K_SPACE: # player shoots a bullet
+                if k == pygame.K_SPACE: # player shoots a bullet
                     self.bullet = bullets(WHITE, self.player.rect.x, self.player.rect.y)
                     self.all_sprites_group.add(self.bullet)
                     self.bullet_group.add(self.bullet)               
             elif event.type == pg.KEYUP: # no movement if no keys are being pressed
                 self.player.speed = 0
                 if event.key == pg.K_p:   # pauses game until a key is pressed
-                    self.press_to_play()
+                    self.navigation()
+                    
                     
     def draw(self):
         # drawing on screen
-        self.screen.fill(BLACK) # background        
-        self.all_sprites_group.draw(self.screen) # draw sprites onto screen
-        self.draw_text(WHITE, 100, 50, 30, "SCORE: %d" % self.score) # display score
-        if self.lives >= 0: # display lives if 0 or above
-            self.draw_text(WHITE, 100, 80, 30, "LIVES: %d" % self.lives)
-        else: # otherwise display 0 lives
-            self.draw_text(WHITE, 100, 80, 30, "LIVES: 0")
-        self.draw_text(WHITE, 100, 110, 30, "COINS: %d" % self.coin_total) # display coin total
+        screen.fill(BLACK) # background        
+        self.all_sprites_group.draw(screen) # draw sprites onto screen
+        draw_text(WHITE, 100, 50, 30, "SCORE: %d" % self.score) # display score
+        draw_text(WHITE, 100, 80, 30, "LIVES: %d" % self.lives) if self.lives >= 0 else draw_text(WHITE, 100, 80, 30, "LIVES: 0")
+        draw_text(WHITE, 100, 110, 30, "COINS: %d" % self.coin_total) # display coin total
         pg.display.flip() # after drawing everything, flip the display
+
+    def sprite_groups(self):
+        self.all_sprites_group = pg.sprite.Group()        
+        self.pillar_group = pg.sprite.Group()
+        self.bullet_group = pg.sprite.Group()
+        self.enemy_group = pg.sprite.Group()
+        self.bonus_group = pg.sprite.Group()
+        self.rocket_group = pg.sprite.Group()
+        self.butt_group = pg.sprite.Group()
+        self.shop_group = pg.sprite.Group()
         
     def menu(self):
-        self.shop_g = pg.sprite.Group()
+        self.entered = False # hasn't entered shop yet
+        self.waiting = True
+        self.shop_butt = Button(GREEN, size[0]/2-50, size[1]/2, 100, 35, "Shop")
+        self.butt_group.add(self.shop_butt)
+        self.player = Player() # create player
+        self.all_sprites_group.add(self.player)
+        self.shop = Shop() # instantiate shop
+        s = self.shop # abbreviate
+        # add shop skins to shop group
+        self.shop_group.add(s,s.skin1,s.skin2,s.skin3,s.skin4) 
         # show start screen
-        self.screen.fill(BLUE) # menu background
-        self.draw_button(GREEN, size[0]/2, size[1]/3, 100, 50, "Shop") 
-        self.draw_text(GREEN, 150, 50, 40, "Highscore: %d" % self.highscore)
-        self.draw_text(GREEN, 150, 100, 40, "Coins: %d" % self.coin_total)
-        self.draw_text(GREEN, size[0]/2, size[1]/1.5, 40, "Press any key to play")
-        self.draw_text(GREEN, size[0]/2, size[1]/1.2, 40, "Arrows to move, space to shoot")
-        self.shop = Shop()
-        self.shop_g.add(self.shop)
-        #if shop:
-         #   self.shop_g.draw(self.screen)
+        screen.fill(BLUE) # menu background
+        draw_text(GREEN, size[0]/2, 20, 40, "Enter Name: ")
+        draw_text(GREEN, 150, 50, 40, "Highscore: %d" % self.highscore)
+        draw_text(GREEN, 150, 100, 40, "Coins: %d" % self.coin_total)
+        draw_text(GREEN, size[0]/2, size[1]/1.5, 40, "Press p to play")
+        draw_text(GREEN, size[0]/2, size[1]/1.2, 40, "Arrows to move, space to shoot")
         pg.display.flip()
-        self.press_to_play() # wait for player to press a key
+        while self.waiting: # while menu is true repeat steps
+            self.navigation() # wait for player to press a key            
+            # create buttons
+            self.butt_group.draw(screen)
+            self.butt_group.update()
 
+                
     def game_over(self):
+        self.waiting = True
         if not self.running:
             pg.QUIT()
-        self.screen.fill(BLUE) # game over screen background
-        self.draw_text(GREEN, size[0]/2, 50, 40, "Game over, press any key to play")
-        self.draw_text(GREEN, size[0]/2, 150, 40, "Score: %d" % self.score)
+        screen.fill(BLUE) # game over screen background
+        draw_text(GREEN, size[0]/2, 50, 40, "Game over, press any key to play")
+        draw_text(GREEN, size[0]/2, 200, 40, "Score: %d" % self.score)
+        
         if self.score > self.highscore: # new highscore
-            self.highscore = self.score 
-            self.draw_text(GREEN, size[0]/2, 250, 40, "NEW HIGHSCORE!")
-            with open(HS_file, 'w') as file: # open text file
-                file.write(str(self.highscore)) # save new highscore in text fil
+            self.highscore = self.score
+            draw_text(GREEN, size[0]/2, 300, 40, "NEW HIGHSCORE! " + self.hs_name)
+            self.writefiles(HS_file, self.highscore)
         else:
-            self.draw_text(GREEN, size[0]/2, 250, 40, "Highscore: %d" % self.highscore)
+            draw_text(GREEN, size[0]/2, 250, 40, ("Highscore: %d - " % self.highscore) + self.hs_name)
         # game over screen
         pg.display.flip()
-        self.press_to_play()
+        while self.waiting:
+            self.shop_butt = Button(GREEN, size[0]/2-50, size[1]/3, 100, 35, "Shop")
+            self.navigation()
 
-    def press_to_play(self): # wait until player presses a key
-        waiting = True
-        while waiting:
-            self.clock.tick(20) # lower frame rate
-            for event in pg.event.get():
-                if event.type == pg.QUIT:
-                    waiting = False
-                    self.running = False
-                if event.type == pg.KEYUP: # if any key is pressed game starts
-                    waiting = False
-            
-    def draw_text(self, col, x, y, size, text):
-        #Draw text onto the screen
-        font = pg.font.Font(self.font, size) # set font
-        text_surface = font.render(text, True, col)
-        textRect = text_surface.get_rect()
-        textRect.midtop = (x, y) # set top middle of the text
-        self.screen.blit(text_surface, textRect) # display text on screen
+
+    def navigation(self): # wait until player presses a key
+        s = self.shop # abbreviate 
+        ct = self.coin_total # abbreviate
+        
+        for event in pg.event.get():
+            et = event.type # abbreviate
+            self.input_box.handle_event(event)
+            if et == pg.QUIT: # if quit key pressed, end game
+                self.running = False
+            # if any key is pressed and text box not in use game starts
+            if et == pg.KEYUP and self.input_box.color == COLOR_INACTIVE: 
+                self.waiting = False # waiting function stops
+                self.entered = False # exit shop
+                self.play_music() # play music
+            # if shop button is pressed shop is created
+            if et == pg.MOUSEBUTTONUP and self.shop_butt.mouse_pos == True:
+                self.entered = True
+                self.butt_group.remove(self.shop_butt) # remove shop button from screen
                 
-    def draw_button(col, x, y, w, h, text):
-        mouse = pygame.mouse.get_pos()
-        if x+w > mouse[0] > x and y+h > mouse[1] > y:
-            pygame.draw.rect(self.screen, WHITE(x,y,w,h))
-        else:
-            pygame.draw.rect(self.screen, BLACK,(x,y,w,h))
+            if self.entered: # create shop if shop button pressed
+                self.shop_group.draw(screen)
+                self.shop_group.update()
+                self.all_sprites_group.draw(screen)
+                self.all_sprites_group.update()
+                   
+                # check for skins button presses
+                if et == pg.MOUSEBUTTONDOWN and s.skin1.mouse_pos:
+                    self.player.update_col(GREEN) # purchase green skin
+                    ct -= 1 # take coins off 
+                if et == pg.MOUSEBUTTONDOWN and s.skin2.mouse_pos: 
+                    self.player.update_col(YELLOW) # purchase skin
+                    ct -= 1 # take coins off
+                if et == pg.MOUSEBUTTONDOWN and s.skin3.mouse_pos: 
+                    self.player.update_col(HOVER_COLOR) # purchase skin
+                    ct -= 1 # take coins off
+                if et == pg.MOUSEBUTTONDOWN and s.skin4.mouse_pos: 
+                    self.player.update_col(WHITE) # purchase skin
+                    ct -= 1 # take coins off                    
+        
+        self.input_box.update()
+        self.input_box.draw(screen)
+        
+        pg.display.flip()
+        self.clock.tick(100) # frame rate
 
-        self.draw_text(GREEN, (x+(w/2)), y, 20, text )
-    
+            
 game = Game()
 game.menu()
 while game.running:
