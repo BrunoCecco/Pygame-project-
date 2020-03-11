@@ -4,7 +4,6 @@ import random
 import math
 from settings import *
 
-
 def draw_text(col, x, y, size, text):
     #Draw text onto the screen
     font = pg.font.Font(None, size) # set font
@@ -42,7 +41,6 @@ class InputBox:
                         file.write(self.name) # save new name in text file
                 elif event.key == pg.K_BACKSPACE:
                     self.text = self.text[:-1]
-                    
                 else:
                     self.text += event.unicode
                 # Re-render the text.
@@ -66,13 +64,13 @@ class Shop(pygame.sprite.Sprite):
         # Call the sprite constructor
         super().__init__()
         # Set the position of the sprite
-        self.image = pygame.Surface([size[0], size[1]])
+        self.image = pygame.Surface([SCREEN_WIDTH, SCREEN_HEIGHT])
         self.image.fill(BLUE) # fill sprite with the color
         self.rect = self.image.get_rect()
         self.rect.x = 0 
         self.rect.y = 0
-        self.width = size[0]
-        self.height = size[1]
+        self.width = SCREEN_WIDTH
+        self.height = SCREEN_HEIGHT
         self.skin1 = Button(GREEN, 50, 50, 200, 30, "GREEN SKIN")
         self.skin2 = Button(YELLOW, 50, 150, 200, 30, "YELLOW SKIN")
         self.skin3 = Button(BLUE, 50, 250, 200, 30, "BLUE SKIN")
@@ -108,48 +106,69 @@ class Button(pygame.sprite.Sprite):
 
 class Enemy(pygame.sprite.Sprite):
     # Define the constructor
-    def __init__(self, width, height, player):
+    def __init__(self, x, y, w):
         # Call the sprite constructor
         super().__init__()
         # Set the position of the sprite
-        self.image = pygame.Surface([width, height])
+        self.image = pygame.Surface([w, w])
         self.image.fill(RED) # fill sprite with the color
         self.rect = self.image.get_rect()
-        self.rect.x = -(random.randrange(0, 1000)) # set initial x coordinate
-        self.rect.y = 0 # set initial y coordinate
-        self.width = width
-        self.height = height
-        self.speed = 3 # set enemy speed
+        self.rect.x = x * w - 50 # set initial x coordinate
+        self.rect.y = y * w # set initial y coordinate
+        self.speed = 1 # set enemy speed
 
-    
-class Player(pygame.sprite.Sprite):
+    def move(self,  pl):
+        if pl.rect.x > self.rect.x:
+            self.rect.x += self.speed
+        if pl.rect.y < self.rect.y:
+            self.rect.y -= self.speed
+        elif pl.rect.y > self.rect.y:
+            self.rect.y += self.speed
+            
+# tbd - sort out enemy spawning
+
+class Player():
     # Define the constructor
-    def __init__(self):
-        # Call the sprite constructor
-        pygame.sprite.Sprite.__init__(self)
-        # Set the position of the sprite
-        self.image = pygame.Surface([40, 40])
-        self.image.fill(GREEN)
-        self.rect = self.image.get_rect()
-        self.rect.x = size[0]/2
-        self.rect.y = size[1] - 40
-        self.width = 40
-        self.height = 40
+    def __init__(self, x, y, w):
         self.speed = 0
- 
-    def update(self):
-        self.rect.y += self.speed #player move up or down            
-        if self.rect.y <= size[1]-self.height:
-            self.rect.y += 2 #gravitational effect
-        if self.rect.y >= size[1]: #floor
-            self.rect.y = size[1] - self.height
-        if self.rect.y <= 0: #ceiling
-            self.rect.y = 0
+        self.width = w
+        self.body_len = 8
+        self.body = []
+        for i in range(0, self.body_len):
+            self.body.append(pygame.sprite.Sprite())
+            elem = self.body[i]
+            elem.image = pygame.Surface([w, w])
+            elem.image.fill(GREEN)
+            elem.rect = elem.image.get_rect()
+            elem.rect.x = x - i * w
+            elem.rect.y = y
+            elem.speed = 0
+        self.sprite = self.body[0]
+
+    def move(self, up=True):
+        change = self.width * (-1 if up else 1)
+        self.body[0].rect.y += change
+        for i in range(1, self.body_len): # check each part of the player body
+            dist = self.body[i].rect.y - self.body[i-1].rect.y
+            if abs(dist) > abs(change): # re-align if not in line
+                delta = -change
+                self.body[i].rect.y = self.body[i-1].rect.y + delta
+        if self.sprite.rect.y >= SCREEN_HEIGHT: #floor
+            self.sprite.rect.y = SCREEN_HEIGHT - self.width
+        if self.sprite.rect.y <= 0: #ceiling
+            self.sprite.rect.y = 0
+
+    def straighten(self): #re-align body 
+        for i in range(1, self.body_len):
+            direction = -1 if self.body[i].rect.y > self.body[0].rect.y else 1
+            if self.body[i].rect.y != self.body[0].rect.y:
+                self.body[i].rect.y += self.width * direction 
+        
             
     def update_col(self, col):
         self.col = col
-        self.image.fill(self.col)
-
+        for i in range(0, self.body_len):
+            self.body[i].image.fill(self.col)
 
 class bullets(pygame.sprite.Sprite):
     # Define the constructor 
@@ -169,81 +188,68 @@ class bullets(pygame.sprite.Sprite):
 
     def update(self):
         self.rect.x -= self.speed #bullets move left
-
-
-class Lives(pygame.sprite.Sprite):
+        
+class Block(pygame.sprite.Sprite):
     # Define the constructor
-    def __init__(self, color, width, height):
+    def __init__(self, color, x, y, w):
         # Call the sprite constructor
         super().__init__()
         # Create a sprite and fill it with colour
-        self.image = pygame.Surface([width,height])
+        self.image = pygame.Surface([w,w])
         self.image.fill(color)
         self.rect = self.image.get_rect()
-        self.rect.x = random.randrange(1000, 6000)
-        self.rect.y = random.randrange(0, size[1] - height)
-        # Set the position of the sprite
-        self.width = width
-        self.height = height
+        self.rect.x = x * w + 1000
+        self.rect.y = y * w
+
+    def update(self):
+        self.rect.x -= game_speed
+        
+class Lives(pygame.sprite.Sprite):
+    # Define the constructor
+    def __init__(self, color, x, y, w):
+        # Call the sprite constructor
+        super().__init__()
+        # Create a sprite and fill it with colour
+        self.image = pygame.Surface([w,w])
+        self.image.fill(color)
+        self.rect = self.image.get_rect()
+        self.rect.x = x*w + 1000
+        self.rect.y = y*w
         self.speed = game_speed
         
     def update(self): # create illusion that player is moving right
         self.rect.x -= self.speed #move to the left
-
 
 class Coins(pygame.sprite.Sprite):
     # Define the constructor
-    def __init__(self, color, width, height):
+    def __init__(self, color, x, y, w):
         # Call the sprite constructor
         super().__init__()
         # Create a sprite and fill it with colour
-        self.image = pygame.Surface([width,height])
+        self.image = pygame.Surface([w,w])
         self.image.fill(color)
         self.rect = self.image.get_rect()
-        self.rect.x = random.randrange(1000, 2000)
-        self.rect.y = random.randrange(0, size[1] - height)
-        # Set the position of the sprite
-        self.width = width
-        self.height = height
+        self.rect.x = x*w + 1000
+        self.rect.y = y*w
         self.speed = game_speed
         
     def update(self): # create illusion that player is moving right
         self.rect.x -= self.speed #move to the left
 
-
-## -- Define the class invaders which is a sprite
-class Obstacle(pygame.sprite.Sprite):
+class Background(pygame.sprite.Sprite):
     # Define the constructor
-    def __init__(self, width, height):
+    def __init__(self, x, y, w):
         # Call the sprite constructor
         super().__init__()
         # Create a sprite and fill it with colour
-        self.width = width
-        self.height = height
-        self.color = RED
-        self.image = pygame.Surface([width,height])
-        self.image.fill(self.color)
+        self.image = pygame.Surface([w,w])
+        self.image.fill(BLACK)
         self.rect = self.image.get_rect()
-        self.rect.x = -100 # spawn in a random position
-        self.rect.y = -100
-        # Set the position of the sprite
-
-
-class Pillars(Obstacle):
-    pass
-
+        self.rect.x = x*w + 1000
+        self.rect.y = y*w
+        self.speed = game_speed
+        
     def update(self): # create illusion that player is moving right
-        self.rect.x -= game_speed #obstacles move to the left
-        if self.rect.x <= 0:
-            self.rect.x = random.randrange(1000, 2000) # respawn if they go off the screen
-            self.rect.y = random.randrange(0, size[1]-self.height) #respawn in a random position
+        self.rect.x -= self.speed #move to the left
 
-class Rockets(Obstacle):
-    pass
-
-    def update(self): # create illusion that player is moving right
-        self.rect.x -= game_speed*2 #obstacles move to the left
-        if self.rect.x <= 0:
-            self.rect.x = 3000 # respawn if they go off the screen
-            self.rect.y = random.randrange(0, size[1]-self.height) #respawn in a random position
 

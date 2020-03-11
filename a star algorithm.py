@@ -2,17 +2,6 @@
 from queue import PriorityQueue
 
 class State(object):
-
-    '''
-    Author: Kevin Pulido
-    27-Sept-2017
-
-    Steps:
-    1) Generate a list of all possible next Steps toward goal from current position
-    2) Store Children in PriorityQueue based on distance to goal, closest first
-    3) Select closest child and Repeat until goal reached or no more Children
-    '''
-
     def __init__(self, value, parent,
                  start = 0,
                  goal = 0):
@@ -111,17 +100,7 @@ a = AStar_Solver(start1, goal1)
 a.Solve()
 
 for i in range(len(a.path)):
-    print("{0}) {1}".format(i, a.path[i]))               
-
-
-
-
-
-
-
-
-
-            
+    print("{0}) {1}".format(i, a.path[i]))                   
 
 
 
