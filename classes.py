@@ -75,8 +75,17 @@ class Shop(pygame.sprite.Sprite):
         self.skin2 = Button(YELLOW, 50, 150, 200, 30, "YELLOW SKIN")
         self.skin3 = Button(BLUE, 50, 250, 200, 30, "BLUE SKIN")
         self.skin4 = Button(WHITE, 50, 350, 200, 30, "WHITE SKIN")
+        self.skin5 = Button(RED, 700, 50, 200, 30, "RED SKIN")
+        self.skin6 = Button(ORANGE, 700, 150, 200, 30, "ORANGE SKIN")
+        self.skin7 = Button(PURPLE, 700, 250, 200, 30, "PURPLE SKIN")
 
-                
+    def skin_selection(self, event, skin, player, colour, coin_total):
+        if event == pygame.MOUSEBUTTONDOWN and skin.mouse_pos and coin_total > 10:
+            player.update_col(colour)
+            coin_total -= 150
+            with open(coinfile, 'w') as file: # open text file
+                file.write(str(coin_total)) # save new value in text file
+            
 class Button(pygame.sprite.Sprite):
     # Define the constructor
     def __init__(self, col, x, y, w, h, text):
@@ -132,7 +141,9 @@ class Player():
     def __init__(self, x, y, w):
         self.speed = 0
         self.width = w
-        self.body_len = 8
+        self.x = x
+        self.y = y
+        self.body_len = 5
         self.body = []
         for i in range(0, self.body_len):
             self.body.append(pygame.sprite.Sprite())
@@ -191,18 +202,30 @@ class bullets(pygame.sprite.Sprite):
         
 class Block(pygame.sprite.Sprite):
     # Define the constructor
-    def __init__(self, color, x, y, w):
+    def __init__(self, game, color, x, y, w, oscillating=False):
         # Call the sprite constructor
         super().__init__()
         # Create a sprite and fill it with colour
+        self.game = game
         self.image = pygame.Surface([w,w])
         self.image.fill(color)
         self.rect = self.image.get_rect()
         self.rect.x = x * w + 1000
         self.rect.y = y * w
+        self.osc_speed = oscillating_speed
+        self.oscillating = oscillating
 
     def update(self):
+        self.elapsed = pygame.time.get_ticks()
         self.rect.x -= game_speed
+        if self.oscillating and self.game.score > 400:
+            if self.rect.y >= SCREEN_HEIGHT - 20:
+                self.osc_speed *= -1
+            if self.rect.y <= 0:
+                self.osc_speed *= -1
+            self.rect.y += self.osc_speed
+        
+            
         
 class Lives(pygame.sprite.Sprite):
     # Define the constructor
@@ -235,21 +258,4 @@ class Coins(pygame.sprite.Sprite):
         
     def update(self): # create illusion that player is moving right
         self.rect.x -= self.speed #move to the left
-
-class Background(pygame.sprite.Sprite):
-    # Define the constructor
-    def __init__(self, x, y, w):
-        # Call the sprite constructor
-        super().__init__()
-        # Create a sprite and fill it with colour
-        self.image = pygame.Surface([w,w])
-        self.image.fill(BLACK)
-        self.rect = self.image.get_rect()
-        self.rect.x = x*w + 1000
-        self.rect.y = y*w
-        self.speed = game_speed
-        
-    def update(self): # create illusion that player is moving right
-        self.rect.x -= self.speed #move to the left
-
 
