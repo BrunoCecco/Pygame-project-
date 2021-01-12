@@ -6,6 +6,7 @@ from settings import *
 from classes import *
 from os import path
 
+# make floor and a ceiling that randomly change height
 # game class
 class Game(pg.sprite.Sprite):
     # Define the constructor
@@ -17,22 +18,22 @@ class Game(pg.sprite.Sprite):
         self.clock = pg.time.Clock()
         self.running = True
         
-        self.highscore = self.readfile(hsfile)
-        self.coin_total = self.readfile(coinfile)
+        self.highscore = self.readfile(HSFILE)
+        self.coin_total = self.readfile(COINFILE)
         self.hs_name = self.readfile(hsname, True)
-        
+        self.play_music() # play music        
         self.sprite_groups() # create sprite groups
         self.block_size = 20 # block width (size)
 
         #create text boxes
         self.input_box = InputBox(SCREEN_WIDTH/2 - 100, 50, 140, 30)
         self.endtime = 0
-        
+    
+    # make sound effects
     def play_music(self):
-        song_q = ['Music\spongebob.mp3', 'Music\dontworry.mp3', 'Music\jinglebells.mp3', 'Music\chainsmokers.mp3']
+        song_q = ['Music\dontworry.mp3', 'Music\jinglebells.mp3', 'Music\chainsmokers.mp3']
         pygame.mixer.music.load(random.choice(song_q)) # load random song
         #pg.mixer.music.play() # play random song from list
-
 
     def readfile(self, name, string = False):
         with open(name, 'r') as file: # open file if it exists
@@ -71,7 +72,7 @@ class Game(pg.sprite.Sprite):
         # random spawn positions
         for i in range (0, self.screen_height()):
             for j in range (0, self.screen_width()):
-                if j == 0 and i == 0:
+                if j == 3 and i == self.screen_height()/2:
                     self.new_row.append(4) # 4 indicates enemy
                 elif j == self.coin_rand and i == self.coin_rand:
                     self.new_row.append(3) # 3 indicates coin
@@ -97,13 +98,13 @@ class Game(pg.sprite.Sprite):
                         self.block = Block(self, BLUE, x, y, self.block_size)
                     self.map_group.add(self.block)
                 if self.game_map[y][x] == 2: 
-                    self.extra_life = Lives(GREEN, x, y, self.block_size)
+                    self.extra_life = Lives(GREEN, x, y, self.block_size) 
                     self.life_group.add(self.extra_life)
                 if self.game_map[y][x] == 3:
                     self.coins = Coins(YELLOW, x, y, self.block_size)
                     self.coin_group.add(self.coins)
                 if self.game_map[y][x] == 4:
-                    self.enemy = Enemy(x, y, self.block_size)
+                    self.enemy = Enemy(RED, x, y, self.block_size, self)
                     self.enemy_group.add(self.enemy)
                 else:
                     continue
@@ -138,16 +139,12 @@ class Game(pg.sprite.Sprite):
         
         # game loop update function
         self.all_sprites_group.update() # update all sprites
-
         for s in self.all_sprites_group:
-            if s.rect.x <= -50: # respawn sprite if they go off screen
+            if s.rect.x < -50: # respawn sprite if they go off screen
                 s.kill()
             # respawn obstacles and bonuses
-            if len(self.life_group) + len(self.coin_group) + len(self.map_group) == 30:
+            if len(self.life_group) + len(self.coin_group) + len(self.map_group) <= 100:
                 self.create_map()
-
-        # enemy movement to track players
-        self.enemy.move(self.player.body[self.player.body_len-1]) # target is last block in player body
         
         #abbreviations
         pl = self.player.sprite 
@@ -159,16 +156,15 @@ class Game(pg.sprite.Sprite):
             self.lives -= 1
         for b in pygame.sprite.groupcollide(self.player_group, self.life_group, False, True):
              # if there's a collision increase lives
-            self.lives -= 1
+            self.lives += 1
         for c in pygame.sprite.groupcollide(self.player_group, self.coin_group, False, True):
             # if there's a collision add coins to player
             self.coin_total += 1
-            self.writefiles(coinfile, self.coin_total)
+            self.writefiles(COINFILE, self.coin_total)
             
        # check for collision with bullets and enemy
         pygame.sprite.groupcollide(self.bullet_group, self.enemy_group, True, True)
             
-
         # check for collision with enemy and player
         for b in pygame.sprite.groupcollide(self.player_group, self.enemy_group, False, True):
             self.lives -= 3
@@ -186,6 +182,7 @@ class Game(pg.sprite.Sprite):
         if curr_time - self.endtime > 75: # re-align player every x milliseconds
             self.player.straighten()
             self.endtime = curr_time
+
             
     def events(self):
         # keyboard events
@@ -202,7 +199,7 @@ class Game(pg.sprite.Sprite):
             if event.type == pg.KEYDOWN:
                 k = event.key      
                 if k == pygame.K_SPACE: # player shoots a bullet
-                    self.bullet = bullets(WHITE, self.player.body[0].rect.x, self.player.body[0].rect.y)
+                    self.bullet = Bullets(WHITE, self.player.body[0].rect.x, self.player.body[0].rect.y)
                     self.all_sprites_group.add(self.bullet)
                     self.bullet_group.add(self.bullet)               
                 if event.key == pg.K_p:   # pauses game until a key is pressed
@@ -226,7 +223,7 @@ class Game(pg.sprite.Sprite):
         self.enemy_group = pg.sprite.Group()
         self.life_group = pg.sprite.Group()
         self.coin_group = pg.sprite.Group()
-        self.butt_group = pg.sprite.Group()
+        self.button_group = pg.sprite.Group()
         self.shop_group = pg.sprite.Group()
         
     def menu(self):
@@ -236,9 +233,9 @@ class Game(pg.sprite.Sprite):
         self.all_sprites_group.add(self.player_group) # add player to all sprites group
 
         self.entered = False # hasn't entered shop yet
-        self.waiting = True
-        self.shop_butt = Button(GREEN, SCREEN_WIDTH/2-50, SCREEN_HEIGHT/2, 100, 35, "Shop")
-        self.butt_group.add(self.shop_butt)
+        self.waiting = True # 
+        self.shop_button = Button(GREEN, SCREEN_WIDTH/2-50, SCREEN_HEIGHT/2, 100, 35, "Shop")
+        self.button_group.add(self.shop_button)
         self.shop = Shop() # instantiate shop
         s = self.shop # abbreviate
         # add shop skins to shop group
@@ -254,8 +251,8 @@ class Game(pg.sprite.Sprite):
         while self.waiting: # while menu is true repeat steps
             self.navigation() # wait for player to press a key            
             # create buttons
-            self.butt_group.draw(screen)
-            self.butt_group.update()
+            self.button_group.draw(screen)
+            self.button_group.update()
 
                 
     def game_over(self):
@@ -268,13 +265,13 @@ class Game(pg.sprite.Sprite):
         if self.score > self.highscore: # new highscore
             self.highscore = self.score
             draw_text(GREEN, SCREEN_WIDTH/2, 300, 40, "NEW HIGHSCORE! " + self.hs_name)
-            self.writefiles(hsfile, self.highscore)
+            self.writefiles(HSFILE, self.highscore)
         else:
             draw_text(GREEN, SCREEN_WIDTH/2, 250, 40, ("Highscore: %d - " % self.highscore) + self.hs_name)
         # game over screen
         pg.display.flip()
         while self.waiting:
-            self.shop_butt = Button(GREEN, SCREEN_WIDTH/2-50, SCREEN_HEIGHT/3, 100, 35, "Shop")
+            self.shop_button = Button(GREEN, SCREEN_WIDTH/2-50, SCREEN_HEIGHT/3, 100, 35, "Shop")
             self.navigation()
 
     def navigation(self): # wait until player presses a key
@@ -291,9 +288,9 @@ class Game(pg.sprite.Sprite):
                 self.entered = False # exit shop
                 self.play_music() # play music
             # if shop button is pressed shop is created
-            if et == pg.MOUSEBUTTONUP and self.shop_butt.mouse_pos == True:
+            if et == pg.MOUSEBUTTONUP and self.shop_button.mouse_pos == True:
                 self.entered = True
-                self.butt_group.remove(self.shop_butt) # remove shop button from screen
+                self.button_group.remove(self.shop_button) # remove shop button from screen
                 
             if self.entered: # create shop if shop button pressed
                 self.shop_group.draw(screen)

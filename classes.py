@@ -80,10 +80,9 @@ class Shop(pygame.sprite.Sprite):
         self.skin7 = Button(PURPLE, 700, 250, 200, 30, "PURPLE SKIN")
 
     def skin_selection(self, event, skin, player, colour, coin_total):
-        if event == pygame.MOUSEBUTTONDOWN and skin.mouse_pos and coin_total > 10:
+        if event == pygame.MOUSEBUTTONDOWN and skin.mouse_pos:
             player.update_col(colour)
-            coin_total -= 150
-            with open(coinfile, 'w') as file: # open text file
+            with open(COINFILE, 'w') as file: # open text file
                 file.write(str(coin_total)) # save new value in text file
             
 class Button(pygame.sprite.Sprite):
@@ -112,21 +111,35 @@ class Button(pygame.sprite.Sprite):
             self.col = self.init_col # change button text colour back to initial state   
         draw_text(self.col, (self.rect.x+(self.width/2)), self.rect.y, self.height+10, self.text) # draw text on button
 
-
-class Enemy(pygame.sprite.Sprite):
+class MapObject(pygame.sprite.Sprite):
     # Define the constructor
-    def __init__(self, x, y, w):
+    def __init__(self, color, x, y, w):
         # Call the sprite constructor
         super().__init__()
         # Set the position of the sprite
         self.image = pygame.Surface([w, w])
-        self.image.fill(RED) # fill sprite with the color
+        self.image.fill(color) # fill sprite with the color
         self.rect = self.image.get_rect()
-        self.rect.x = x * w - 50 # set initial x coordinate
+        self.rect.center = (w/2, w/2)
+        self.rect.x = x * w + 1000 # set initial x coordinate
         self.rect.y = y * w # set initial y coordinate
-        self.speed = 1 # set enemy speed
+        self.speed = game_speed # set speed
+    
+    def update(self):
+        self.rect.x -= self.speed
 
-    def move(self,  pl):
+class Enemy(MapObject):
+    # Define the constructor
+    def __init__(self, color, x, y, w, game):
+        # Call the sprite constructor
+        MapObject.__init__(self, color, x, y, w)
+        # Set the position of the sprite
+        self.rect.x = x * w - 50 # set initial x coordinate
+        self.speed = 1 # set enemy speed
+        self.game = game
+
+    def update(self):
+        pl = self.game.player.body[0]
         if pl.rect.x > self.rect.x:
             self.rect.x += self.speed
         if pl.rect.y < self.rect.y:
@@ -138,40 +151,54 @@ class Enemy(pygame.sprite.Sprite):
 
 class Player():
     # Define the constructor
-    def __init__(self, x, y, w):
-        self.speed = 0
+    def __init__(self, x, y, w):       
         self.width = w
         self.x = x
         self.y = y
-        self.body_len = 5
-        self.body = []
+        self.body_len = 5 # number of blocks to be in the body
+        self.body = [] # list of body blocks 
         for i in range(0, self.body_len):
-            self.body.append(pygame.sprite.Sprite())
-            elem = self.body[i]
-            elem.image = pygame.Surface([w, w])
-            elem.image.fill(GREEN)
+            # append a sprite to the list of blocks 
+            self.body.append(pygame.sprite.Sprite())            
+            elem = self.body[i]        
+            elem.image = pygame.Surface([w, w]) # surface of the sprite
+            elem.image.fill(BLUE) # fill sprite with the color
             elem.rect = elem.image.get_rect()
-            elem.rect.x = x - i * w
-            elem.rect.y = y
+            # each block's x coordinate decreases by one block on the map
+            # this is so the blocks don't appear in the same spot
+            elem.rect.x = x - i * w 
+            elem.rect.y = y            
             elem.speed = 0
+        # player head is the front block of the list         
         self.sprite = self.body[0]
 
     def move(self, up=True):
+        # function to move like a snake 
         change = self.width * (-1 if up else 1)
-        self.body[0].rect.y += change
+        # up is passed in from main program and
+        # changes depending on which arrow key is pressed
+        self.body[0].rect.y += change # update y coordinate of the head        
         for i in range(1, self.body_len): # check each part of the player body
-            dist = self.body[i].rect.y - self.body[i-1].rect.y
-            if abs(dist) > abs(change): # re-align if not in line
+            # distance between each successive body part
+            dist = self.body[i].rect.y - self.body[i-1].rect.y            
+            # check if vertical distance from one block to the successive is above
+            # the block width          
+            if abs(dist) > abs(change): 
+                # if so then make sure the previous block doesn't detach from the block in front 
                 delta = -change
                 self.body[i].rect.y = self.body[i-1].rect.y + delta
-        if self.sprite.rect.y >= SCREEN_HEIGHT: #floor
+        # player can't go off the screen
+        if self.sprite.rect.y >= SCREEN_HEIGHT: # floor            
             self.sprite.rect.y = SCREEN_HEIGHT - self.width
-        if self.sprite.rect.y <= 0: #ceiling
+        if self.sprite.rect.y <= 0: # ceiling
             self.sprite.rect.y = 0
 
-    def straighten(self): #re-align body 
+    def straighten(self): # re-align the body 
         for i in range(1, self.body_len):
+            # direction to re-align in is up (negative) is the previous block 
+            # is under the block in front and vice versa
             direction = -1 if self.body[i].rect.y > self.body[0].rect.y else 1
+            # until each successive body part is in line, update their y direction 
             if self.body[i].rect.y != self.body[0].rect.y:
                 self.body[i].rect.y += self.width * direction 
         
@@ -181,7 +208,7 @@ class Player():
         for i in range(0, self.body_len):
             self.body[i].image.fill(self.col)
 
-class bullets(pygame.sprite.Sprite):
+class Bullets(pygame.sprite.Sprite):
     # Define the constructor 
     def __init__(self, color, plx, ply): # bullet uses player's x and y coordinates 
         # Call the sprite constructor
@@ -195,25 +222,20 @@ class bullets(pygame.sprite.Sprite):
         self.rect.y = ply 
         self.width = 10
         self.height = 10
-        self.speed = game_speed * 2
 
     def update(self):
-        self.rect.x -= self.speed #bullets move left
+        self.rect.x -= game_speed * 2 #bullets move left
         
-class Block(pygame.sprite.Sprite):
+class Block(MapObject):
     # Define the constructor
     def __init__(self, game, color, x, y, w, oscillating=False):
         # Call the sprite constructor
-        super().__init__()
+        MapObject.__init__(self, color, x, y, w)       
         # Create a sprite and fill it with colour
-        self.game = game
-        self.image = pygame.Surface([w,w])
-        self.image.fill(color)
-        self.rect = self.image.get_rect()
-        self.rect.x = x * w + 1000
-        self.rect.y = y * w
+        self.game = game 
         self.osc_speed = oscillating_speed
         self.oscillating = oscillating
+        pass
 
     def update(self):
         self.elapsed = pygame.time.get_ticks()
@@ -227,35 +249,21 @@ class Block(pygame.sprite.Sprite):
         
             
         
-class Lives(pygame.sprite.Sprite):
+class Lives(MapObject):
     # Define the constructor
     def __init__(self, color, x, y, w):
         # Call the sprite constructor
-        super().__init__()
+        MapObject.__init__(self, color, x, y, w)
         # Create a sprite and fill it with colour
-        self.image = pygame.Surface([w,w])
-        self.image.fill(color)
-        self.rect = self.image.get_rect()
-        self.rect.x = x*w + 1000
-        self.rect.y = y*w
-        self.speed = game_speed
-        
-    def update(self): # create illusion that player is moving right
-        self.rect.x -= self.speed #move to the left
+        pass
+    pass
 
-class Coins(pygame.sprite.Sprite):
+class Coins(MapObject):
     # Define the constructor
     def __init__(self, color, x, y, w):
         # Call the sprite constructor
-        super().__init__()
+        MapObject.__init__(self, color, x, y, w)
         # Create a sprite and fill it with colour
-        self.image = pygame.Surface([w,w])
-        self.image.fill(color)
-        self.rect = self.image.get_rect()
-        self.rect.x = x*w + 1000
-        self.rect.y = y*w
-        self.speed = game_speed
-        
-    def update(self): # create illusion that player is moving right
-        self.rect.x -= self.speed #move to the left
+        pass
+    pass
 

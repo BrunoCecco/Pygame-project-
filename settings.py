@@ -13,21 +13,25 @@ HOVER_COLOR = (50, 50, 255)
 BLUE = (0, 0, 255)
 GREEN = (0, 255, 0)
 YELLOW = (255, 255, 0)
+TURQUOISE = (64,224,208)
 LIGHTGREY = (100, 100, 100)
 DARKGREY = (40, 40, 40)
 RED = (245, 50, 17)
 ORANGE = (255,165,0)
 PURPLE = (148,0,211)
+VIOLET = (238,130,238)
+PINK = (255,192,203)
 
 # project game settings/options
 
-SCREEN_WIDTH = 1020
-SCREEN_HEIGHT = 420
+SCREEN_WIDTH = 1000
+SCREEN_HEIGHT = 600
 FONT = pg.font.Font(None, 32)
 
-hsfile = "Textfiles\highscore.txt"
+HSFILE = "Textfiles\highscore.txt"
 hsname = "Textfiles\hs_name.txt"
-coinfile = "Textfiles\coins.txt"
+COINFILE = "Textfiles\coins.txt"
+SPRITESHEET = "shooter_ss.png"
 game_speed = 4
 oscillating_speed = 1
 
