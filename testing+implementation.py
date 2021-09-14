@@ -23,6 +23,9 @@ PURPLE = (148,0,211)
 VIOLET = (238,130,238)
 PINK = (255,192,203)
 
+COLOR_INACTIVE = (0, 100, 0)
+COLOR_ACTIVE = (0, 200, 0)
+
 FONT = pg.font.Font(None, 32)
 
 # define screen dimensions and create the screen with pygame's display function
@@ -33,8 +36,9 @@ screen = pg.display.set_mode([SCREEN_WIDTH, SCREEN_HEIGHT]) # create screen
 
 # define high score and coin files as strings
 HSFILE = "Textfiles\highscore.txt"
+HS_name = "Textfiles\hs_name.txt"
 COINFILE = "Textfiles\coins.txt"
-game_speed = 2 # define game speed (speed which obstacles will inherit)
+game_speed = 4 # define game speed (speed which obstacles will inherit)
 oscillating_speed = 1
 
 #################
@@ -229,8 +233,6 @@ class Enemy(MapObject):
         elif pl.rect.y > self.rect.y: # if player is below enemy
             self.rect.y += self.speed # enemy should move down
             
-# tbd - sort out enemy spawning
-
 class Player():
     # Define the constructor
     def __init__(self, x, y, w):       
@@ -330,7 +332,6 @@ class Coins(MapObject):
 
 ################
 
-# make floor and a ceiling that randomly change height
 # game class
 class Game(pg.sprite.Sprite):
     # Define the constructor
@@ -352,13 +353,17 @@ class Game(pg.sprite.Sprite):
         # coin_collision = pygame.mixer.Sound('Music\coin_collision.wav')
         # life_collision = pygame.mixer.Sound('Music\life_collision.wav')
         # enemy_collision = pygame.mixer.Sound('Music\enemy_collision.wav')
-        self.player = Player(SCREEN_WIDTH/2, 200, BLOCK_SIZE) # create a player head
+        self.player = Player(SCREEN_WIDTH/2, 200, BLOCK_SIZE) # create a player head   
         self.endtime = 0
+        
+        # instantiate input box
+        self.input_box = InputBox(SCREEN_WIDTH//2 - 100, 50, 140, 30)
+        self.hs_name = self.readfile(HS_name, True) # read the highscore name from the file
 
     def readfile(self, name, string = False):
         with open(name, 'r') as file: # open file if it exists
             try: # runs if possible
-                return int(file.read())
+                return (int(file.read()) if not string else str(file.read()))
             except:
                 return 0
             
@@ -506,9 +511,8 @@ class Game(pg.sprite.Sprite):
 
         # check for collision between player and obstacles 
         for i in pygame.sprite.groupcollide(self.player_group, self.obstacle_group, False, True):
-            continue
-             # if there's a collision decrease lives and delete obstacle from map
-            # self.lives -= 1       
+            # if there's a collision decrease lives and delete obstacle from map
+            self.lives -= 1       
             #self.obstacle_collision.play()   
 
         # check for collision with life objects and player
@@ -518,9 +522,9 @@ class Game(pg.sprite.Sprite):
             #self.life_collision.play()             
 
         # check for collision with enemy and player
-        #for i in pygame.sprite.groupcollide(self.player_group, self.enemy_group, False, True):
+        for i in pygame.sprite.groupcollide(self.player_group, self.enemy_group, False, True):
             # if there's a collision remove 3 lives and remove enemy from the map
-         #   self.lives -= 3
+            self.lives -= 3
             #self.enemy_collision.play()
 
 
@@ -529,14 +533,15 @@ class Game(pg.sprite.Sprite):
             self.player.straighten()
             self.endtime = curr_time
 
-        if self.lives <= 0: #if lives run out, game over            
+        if self.lives <= 0: # if lives run out, game over            
             self.playing = False     
             for s in self.all_sprites_group:
                 s.kill() # remove all sprites from screen
             for b in self.background_group:
                 b.kill() # remove all sprites from screen
         
-        self.score += 0.1
+        self.score += 1
+
 
     def events(self):
         # keyboard events
@@ -610,12 +615,17 @@ class Game(pg.sprite.Sprite):
         # read coin file to see for updates from skin purchases, and update coin total
         self.coin_total = self.readfile(COINFILE) 
         for event in pg.event.get():
+            self.input_box.handle_event(event)
             if event.type == pg.QUIT: # if quit key pressed, end game
-                self.running = False            
-            if event.type == pg.KEYUP: # if a key is pressed 
+                self.running = False          
+            if event.type == pg.KEYUP and self.input_box.color == COLOR_INACTIVE: # if a key is pressed 
                 if event.key == pg.K_p: # check if the key pressed is p, if so start the game
                     self.waiting = False # waiting is false so menu_events function stops 
                     self.entered = False # leave shop if the shop button has been clicked
+                    for i in range(0, self.player.body_len): # add player body to sprite groups
+                        self.player_group.add(self.player.body[i]) # add body to player group
+                    self.all_sprites_group.add(self.player_group) # add player to all sprites group                         
+                    
             if event.type == pg.MOUSEBUTTONUP and self.shop_button.mouse_pos:
                 self.shop_button.mouse_pos = False
                 # if the user clicks the shop button 
@@ -648,19 +658,20 @@ class Game(pg.sprite.Sprite):
                 s.skin_selection(et, s.skin4, pl, WHITE, ct)
                 s.skin_selection(et, s.skin5, pl, RED, ct)
                 s.skin_selection(et, s.skin6, pl, ORANGE, ct)
-                s.skin_selection(et, s.skin7, pl, PURPLE, ct)  
+                s.skin_selection(et, s.skin7, pl, PURPLE, ct) 
+             
+        self.input_box.update()
+        self.input_box.draw(screen)
 
     def game_over(self): # game over function 
         self.waiting = True 
         screen.fill(BLUE) # game over screen background
-        if self.score > self.highscore: # if there is a new highscore
-            self.highscore = self.score # set highscore to the current score
-            # display that there is a new highscore
-            draw_text(GREEN, SCREEN_WIDTH/2, SCREEN_HEIGHT/3, 50, "NEW HIGHSCORE! - %d " % self.highscore)
-            self.writefiles(HSFILE, self.highscore) # write the new highscore into the textfile
+        if self.score > self.highscore: # new highscore
+            self.highscore = self.score
+            draw_text(GREEN, SCREEN_WIDTH/2, SCREEN_HEIGHT/3, 50, "NEW HIGHSCORE! - " + str(self.highscore) + " by " + self.hs_name)
+            self.writefiles(HSFILE, self.highscore)
         else:
-            # if highscore is the same, display it normally
-            draw_text(GREEN, SCREEN_WIDTH/2, SCREEN_HEIGHT/3, 50, ("Highscore: %d " % self.highscore))
+            draw_text(GREEN, SCREEN_WIDTH/2, SCREEN_HEIGHT/3, 50, "Highscore: - " + str(self.highscore) + " by " +self.hs_name)
         draw_text(GREEN, SCREEN_WIDTH/2, SCREEN_HEIGHT/1.5, 50, "Game over, press any key to play")
         draw_text(GREEN, SCREEN_WIDTH/2, SCREEN_HEIGHT/1.2, 50, "Score: %d" % self.score)
         # game over screen
