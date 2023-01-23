@@ -31,7 +31,7 @@ class Game(pg.sprite.Sprite):
     
     # make sound effects
     def play_music(self):
-        song_q = ['Music\dontworry.mp3', 'Music\jinglebells.mp3', 'Music\chainsmokers.mp3']
+        song_q = ['Music/dontworry.mp3', 'Music/jinglebells.mp3', 'Music/chainsmokers.mp3']
         pygame.mixer.music.load(random.choice(song_q)) # load random song
         #pg.mixer.music.play() # play random song from list
 

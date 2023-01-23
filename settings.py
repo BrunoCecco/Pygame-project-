@@ -28,9 +28,9 @@ SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 600
 FONT = pg.font.Font(None, 32)
 
-HSFILE = "Textfiles\highscore.txt"
-hsname = "Textfiles\hs_name.txt"
-COINFILE = "Textfiles\coins.txt"
+HSFILE = "./Textfiles/highscore.txt"
+hsname = "./Textfiles/hs_name.txt"
+COINFILE = "./Textfiles/coins.txt"
 SPRITESHEET = "shooter_ss.png"
 game_speed = 4
 oscillating_speed = 1

@@ -470,8 +470,8 @@ class Game(pg.sprite.Sprite):
         self.create_map()
 
         # instantiate two (alternating) backgrounds 
-        self.bg = Background(0, 0, BLOCK_SIZE, "Images/desert_background.jpg") # first background which appears first
-        self.bg2 = Background(1000, 0, BLOCK_SIZE, "Images/desert_background.jpg") # second background which appears after the first
+        self.bg = Background(0, 0, BLOCK_SIZE, "./Images/desert_background.jpg") # first background which appears first
+        self.bg2 = Background(1000, 0, BLOCK_SIZE, "./Images/desert_background.jpg") # second background which appears after the first
         self.background_group.add(self.bg, self.bg2) # add backgrounds to background group
 
         self.player_group.add(self.player.sprite) # add to player group
