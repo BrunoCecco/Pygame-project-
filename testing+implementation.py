@@ -465,7 +465,7 @@ class Game(pg.sprite.Sprite):
 
     def new_game(self):# start a new game                
     
-        self.score = 0 # player starts with 0 score
+        self.score = 0 
         self.lives = 5 # player starts with 5 lives
         self.create_map()
 
