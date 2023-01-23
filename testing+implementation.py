@@ -463,9 +463,9 @@ class Game(pg.sprite.Sprite):
                 sprite2.kill() # remove sprite 2 from the all sprites group
     
 
-    def new_game(self):# start a new game        
+    def new_game(self):# start a new game                
     
-        self.score = 0
+        self.score = 0 # player starts with 0 score
         self.lives = 5 # player starts with 5 lives
         self.create_map()
 
